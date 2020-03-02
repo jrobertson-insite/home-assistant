@@ -69,8 +69,8 @@ async def test_use_x_forwarded_for_with_untrusted_proxy(aiohttp_client):
     assert text != "255.255.255.255"
 
 
-async def test_use_x_forwarded_for_with_spoofed_header(aiohttp_client):
-    """Test that we get the IP from the transport."""
+async def test_use_x_forwarded_for_with_multiple_proxies(aiohttp_client):
+    """Test that we get the IP from the x-forwarded-for header if the proxy that forwarded the request is trusted"""
     app = web.Application()
     app.router.add_get("/", mock_handler)
     setup_real_ip(app, True, [ip_network("127.0.0.1")])
@@ -78,11 +78,14 @@ async def test_use_x_forwarded_for_with_spoofed_header(aiohttp_client):
     mock_api_client = await aiohttp_client(app)
 
     resp = await mock_api_client.get(
-        "/", headers={X_FORWARDED_FOR: "222.222.222.222, 255.255.255.255"}
+        "/",
+        headers={
+            X_FORWARDED_FOR: "255.255.255.251, 255.255.255.252, 255.255.255.253, 255.255.255.254, 255.255.255.255"
+        },
     )
     assert resp.status == 200
     text = await resp.text()
-    assert text == "255.255.255.255"
+    assert text == "255.255.255.251"
 
 
 async def test_use_x_forwarded_for_with_nonsense_header(aiohttp_client):
